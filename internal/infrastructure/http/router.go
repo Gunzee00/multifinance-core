@@ -13,26 +13,24 @@ import (
 func NewRouter(db *sql.DB) *gin.Engine {
 	r := gin.Default()
 
-	// repository
+	
 	authRepo := repository.NewAuthRepo(db)
-	consumerRepo := repository.NewConsumerRepo()
-	consumerLimitRepo := repository.NewConsumerLimitRepo(db)
-	consumerTxRepo := repository.NewConsumerTransactionRepo(db)
-	assetRepo := repository.NewAssetRepo(db)
+    consumerRepo := repository.NewConsumerRepo()
+    consumerLimitRepo := repository.NewConsumerLimitRepo(db)
+    consumerTxRepo := repository.NewConsumerTransactionRepo(db)
+    assetRepo := repository.NewAssetRepo(db)
 
-	// usecase
+
 	authUC := usecase.NewAuthUsecase(db, consumerRepo, authRepo)
-	assetUC := usecase.NewAssetUsecase(db, assetRepo)
-	consumerLimitUC := usecase.NewConsumerLimitUsecase(db, consumerLimitRepo)
-	consumerTxUC := usecase.NewConsumerTransactionUsecase(db, assetRepo, consumerLimitRepo, consumerTxRepo)
+    assetUC := usecase.NewAssetUsecase(db, assetRepo)
+    consumerTxUC := usecase.NewConsumerTransactionUsecase(db, assetRepo, consumerLimitRepo, consumerTxRepo)
 
-	// handler
+	
 	authHandler := handler.NewAuthHandler(authUC)
-	assetHandler := handler.NewAssetHandler(assetUC)
-	consumerLimitHandler := handler.NewConsumerLimitHandler(consumerLimitUC)
-	consumerTxHandler := handler.NewConsumerTransactionHandler(consumerTxUC)
+    assetHandler := handler.NewAssetHandler(assetUC)
+    consumerTxHandler := handler.NewConsumerTransactionHandler(consumerTxUC)
 
-	// middleware
+	 
 	authMiddleware := handler.AuthMiddleware(authRepo)
 
 	api := r.Group("/api")
@@ -43,7 +41,6 @@ func NewRouter(db *sql.DB) *gin.Engine {
 		consumers := api.Group("/consumers")
 		consumers.Use(authMiddleware)
 		{
-			consumers.POST("limits/:tenor/use", consumerLimitHandler.Use)
 			consumers.POST("transactions", consumerTxHandler.Purchase)
 			consumers.GET("transactions", consumerTxHandler.List)
 		}

@@ -17,7 +17,6 @@ func NewConsumerLimitUsecase(db *sql.DB, r repository.ConsumerLimitRepository) *
 	return &ConsumerLimitUsecase{db: db, repo: r}
 }
 
-// IncreaseUsedLimit safely increases used_limit; fails if it would exceed max_limit
 func (u *ConsumerLimitUsecase) IncreaseUsedLimit(ctx context.Context, consumerID uint64, tenor uint8, amount float64) error {
 	tx, err := u.db.BeginTx(ctx, nil)
 	if err != nil {

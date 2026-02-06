@@ -23,7 +23,6 @@ type useRequest struct {
 }
 
 func (h *ConsumerLimitHandler) Use(c *gin.Context) {
-    // get authenticated user from middleware
     authI, ok := c.Get("auth_user")
     if !ok {
         c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
@@ -32,7 +31,7 @@ func (h *ConsumerLimitHandler) Use(c *gin.Context) {
     authUser := authI.(*entity.AuthUser)
     consumerID := authUser.ConsumerID
 
-    // parse tenor from URL param
+ 
     tenorStr := c.Param("tenor")
     t, err := strconv.ParseUint(tenorStr, 10, 8)
     if err != nil {

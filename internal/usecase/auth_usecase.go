@@ -78,7 +78,7 @@ func (u *AuthUsecase) Register(ctx context.Context, req RegisterRequest) error {
 		return err
 	}
 
-	// create consumer limits for predefined tenors
+
 	tenors := []uint8{1, 2, 3, 6}
 	now := time.Now().UTC()
 	for _, t := range tenors {

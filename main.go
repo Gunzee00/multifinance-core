@@ -1,40 +1,45 @@
 package main
 
 import (
-	"database/sql"
-	"log"
-	"os"
+    "database/sql"
+    "log"
+    "os"
 
-	_ "github.com/go-sql-driver/mysql"
+    "github.com/joho/godotenv"
+    _ "github.com/go-sql-driver/mysql"
 
-	"multifinance-core/internal/infrastructure/http"
+    "multifinance-core/internal/infrastructure/http"
 )
 
 func main() {
-	dsn := os.Getenv("DSN")
-	if dsn == "" {
-		log.Fatal("DSN environment variable is required")
-	}
+    if err := godotenv.Load(); err != nil {
+        log.Println("warning: .env not found, falling back to environment")
+    }
 
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		log.Fatalf("failed to open db: %v", err)
-	}
-	defer db.Close()
+    dsn := os.Getenv("DSN")
+    if dsn == "" {
+        log.Fatal("DSN environment variable is required")
+    }
 
-	if err := db.Ping(); err != nil {
-		log.Fatalf("failed to ping db: %v", err)
-	}
+    db, err := sql.Open("mysql", dsn)
+    if err != nil {
+        log.Fatalf("failed to open db: %v", err)
+    }
+    defer db.Close()
 
-	router := http.NewRouter(db)
+    if err := db.Ping(); err != nil {
+        log.Fatalf("failed to ping db: %v", err)
+    }
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+    router := http.NewRouter(db)
 
-	log.Printf("starting server on :%s", port)
-	if err := router.Run(":" + port); err != nil {
-		log.Fatalf("server exited: %v", err)
-	}
+    port := os.Getenv("PORT")
+    if port == "" {
+        port = "8080"
+    }
+
+    log.Printf("starting server on :%s", port)
+    if err := router.Run(":" + port); err != nil {
+        log.Fatalf("server exited: %v", err)
+    }
 }

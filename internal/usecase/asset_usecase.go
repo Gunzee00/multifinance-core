@@ -3,8 +3,6 @@ package usecase
 import (
 	"context"
 	"database/sql"
- 
-
 	"multifinance-core/internal/domain/entity"
 	"multifinance-core/internal/repository"
 )

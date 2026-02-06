@@ -23,7 +23,6 @@ type purchaseRequest struct {
 }
 
 func (h *ConsumerTransactionHandler) Purchase(c *gin.Context) {
-	// get authenticated user from middleware
 	authI, ok := c.Get("auth_user")
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
@@ -55,7 +54,6 @@ func (h *ConsumerTransactionHandler) Purchase(c *gin.Context) {
 }
 
 func (h *ConsumerTransactionHandler) List(c *gin.Context) {
-	// get authenticated user from middleware
 	authI, ok := c.Get("auth_user")
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})

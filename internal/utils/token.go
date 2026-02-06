@@ -9,7 +9,6 @@ import (
 var ErrInvalidToken = errors.New("invalid token")
 var ErrExpiredToken = errors.New("expired token")
 
-// Token format: "<email>:<RFC3339 timestamp>"
 func ParseToken(token string, ttl time.Duration) (string, time.Time, error) {
 	parts := strings.SplitN(token, ":", 2)
 	if len(parts) != 2 {
