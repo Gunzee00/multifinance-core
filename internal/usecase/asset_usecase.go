@@ -35,12 +35,10 @@ func (u *AssetUsecase) Create(ctx context.Context, req CreateAssetRequest) (uint
 	}
 	defer tx.Rollback()
 
- 
 	a := &entity.Asset{
 		ProductName:  req.ProductName,
 		PriceProduct: req.PriceProduct,
 		Seller:       req.Seller,
-	 
 	}
 
 	id, err := u.repo.Create(ctx, tx, a)

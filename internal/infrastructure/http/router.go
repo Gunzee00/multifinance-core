@@ -13,24 +13,20 @@ import (
 func NewRouter(db *sql.DB) *gin.Engine {
 	r := gin.Default()
 
-	
 	authRepo := repository.NewAuthRepo(db)
-    consumerRepo := repository.NewConsumerRepo()
-    consumerLimitRepo := repository.NewConsumerLimitRepo(db)
-    consumerTxRepo := repository.NewConsumerTransactionRepo(db)
-    assetRepo := repository.NewAssetRepo(db)
-
+	consumerRepo := repository.NewConsumerRepo()
+	consumerLimitRepo := repository.NewConsumerLimitRepo(db)
+	consumerTxRepo := repository.NewConsumerTransactionRepo(db)
+	assetRepo := repository.NewAssetRepo(db)
 
 	authUC := usecase.NewAuthUsecase(db, consumerRepo, authRepo)
-    assetUC := usecase.NewAssetUsecase(db, assetRepo)
-    consumerTxUC := usecase.NewConsumerTransactionUsecase(db, assetRepo, consumerLimitRepo, consumerTxRepo)
+	assetUC := usecase.NewAssetUsecase(db, assetRepo)
+	consumerTxUC := usecase.NewConsumerTransactionUsecase(db, assetRepo, consumerLimitRepo, consumerTxRepo)
 
-	
 	authHandler := handler.NewAuthHandler(authUC)
-    assetHandler := handler.NewAssetHandler(assetUC)
-    consumerTxHandler := handler.NewConsumerTransactionHandler(consumerTxUC)
+	assetHandler := handler.NewAssetHandler(assetUC)
+	consumerTxHandler := handler.NewConsumerTransactionHandler(consumerTxUC)
 
-	 
 	authMiddleware := handler.AuthMiddleware(authRepo)
 
 	api := r.Group("/api")

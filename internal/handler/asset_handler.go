@@ -32,7 +32,7 @@ func (h *AssetHandler) Create(c *gin.Context) {
 
 	a, err := h.uc.GetByID(c.Request.Context(), id)
 	if err != nil {
- 
+
 		c.JSON(http.StatusCreated, gin.H{"id": id})
 		return
 	}

@@ -78,7 +78,6 @@ func (u *AuthUsecase) Register(ctx context.Context, req RegisterRequest) error {
 		return err
 	}
 
-
 	tenors := []uint8{1, 2, 3, 6}
 	now := time.Now().UTC()
 	for _, t := range tenors {

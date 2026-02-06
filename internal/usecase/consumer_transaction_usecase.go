@@ -1,121 +1,124 @@
 package usecase
 
 import (
-    "context"
-    "database/sql"
-    "errors"
-    "fmt"
-    "math"
-    "time"
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"math"
+	"time"
 
-    "multifinance-core/internal/domain/entity"
-    "multifinance-core/internal/repository"
+	"multifinance-core/internal/domain/entity"
+	"multifinance-core/internal/repository"
 )
 
 var ErrInsufficientLimit = errors.New("insufficient limit")
 var ErrInvalidTenor = errors.New("invalid tenor")
 
 type ConsumerTransactionUsecase struct {
-    db       *sql.DB
-    assetRepo repository.AssetRepository
-    limitRepo repository.ConsumerLimitRepository
-    txRepo    repository.ConsumerTransactionRepository
+	db        *sql.DB
+	assetRepo repository.AssetRepository
+	limitRepo repository.ConsumerLimitRepository
+	txRepo    repository.ConsumerTransactionRepository
 }
 
 func NewConsumerTransactionUsecase(db *sql.DB, a repository.AssetRepository, l repository.ConsumerLimitRepository, t repository.ConsumerTransactionRepository) *ConsumerTransactionUsecase {
-    return &ConsumerTransactionUsecase{db, a, l, t}
+	return &ConsumerTransactionUsecase{db, a, l, t}
 }
 
 func allowedTenor(t uint8) bool {
-    return t == 1 || t == 2 || t == 3 || t == 6
+	return t == 1 || t == 2 || t == 3 || t == 6
 }
 
 func (u *ConsumerTransactionUsecase) Purchase(ctx context.Context, consumerID uint64, assetID uint64, tenor uint8) (*entity.Transaction, error) {
-    if !allowedTenor(tenor) {
-        return nil, ErrInvalidTenor
-    }
+	if !allowedTenor(tenor) {
+		return nil, ErrInvalidTenor
+	}
 
-    tx, err := u.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
-    if err != nil {
-        return nil, err
-    }
-    defer tx.Rollback()
+	tx, err := u.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
 
-    asset, err := u.assetRepo.GetByID(ctx, assetID)
-    if err != nil {
-        return nil, err
-    }
+	asset, err := u.assetRepo.GetByID(ctx, assetID)
+	if err != nil {
+		return nil, err
+	}
 
-    row := tx.QueryRowContext(ctx, `SELECT id, consumer_id, tenor_month, max_limit, used_limit FROM consumer_limits WHERE consumer_id = ? AND tenor_month = ? FOR UPDATE`, consumerID, tenor)
-    var clID uint64
-    var cID uint64
-    var tMonth uint8
-    var maxLimit float64
-    var usedLimit float64
-    if err := row.Scan(&clID, &cID, &tMonth, &maxLimit, &usedLimit); err != nil {
-        return nil, err
-    }
+	row := tx.QueryRowContext(ctx, `SELECT id, consumer_id, tenor_month, max_limit, used_limit FROM consumer_limits WHERE consumer_id = ? AND tenor_month = ? FOR UPDATE`, consumerID, tenor)
+	var clID uint64
+	var cID uint64
+	var tMonth uint8
+	var maxLimit float64
+	var usedLimit float64
+	if err := row.Scan(&clID, &cID, &tMonth, &maxLimit, &usedLimit); err != nil {
+		return nil, err
+	}
 
-    available := maxLimit - usedLimit
-    price := asset.PriceProduct
-    if price > available {
+	available := maxLimit - usedLimit
+	price := asset.PriceProduct
+	if price > available {
 
-        tr := &entity.Transaction{
-            ContractNo: fmt.Sprintf("C-%d-%d", consumerID, time.Now().UTC().UnixNano()),
-            ConsumerID: consumerID,
-            ConsumerLimitID: clID,
-            AssetID: assetID,
-            TenorMonth: tenor,
-            OTR: int64(math.Round(price)),
-            AdminFee: int64(math.Round(price * 0.05)),
-            JumlahBunga: int64(math.Round(price * 0.02 * float64(tenor))),
-            JumlahCicilan: 0,
-            Status: "FAILED",
-            CreatedAt: time.Now().UTC(),
-        }
-        if _, err := u.txRepo.Create(ctx, tx, tr); err != nil {
-            return nil, err
-        }
-        _ = tx.Commit()
-        return nil, ErrInsufficientLimit
-    }
+		tr := &entity.Transaction{
+			ContractNo:      fmt.Sprintf("C-%d-%d", consumerID, time.Now().UTC().UnixNano()),
+			ConsumerID:      consumerID,
+			ConsumerLimitID: clID,
+			AssetID:         assetID,
+			TenorMonth:      tenor,
+			OTR:             int64(math.Round(price)),
+			AdminFee:        int64(math.Round(price * 0.05)),
+			JumlahBunga:     int64(math.Round(price * 0.02 * float64(tenor))),
+			JumlahCicilan:   0,
+			Status:          "FAILED",
+			CreatedAt:       time.Now().UTC(),
+		}
+		id, err := u.txRepo.Create(ctx, tx, tr)
+		if err != nil {
+			return nil, err
+		}
+		tr.ID = id
+		_ = tx.Commit()
+		return nil, ErrInsufficientLimit
+	}
 
+	otr := int64(math.Round(price))
+	admin := int64(math.Round(price * 0.05))
+	bunga := int64(math.Round(price * 0.02 * float64(tenor)))
+	total := float64(otr + admin + bunga)
+	cicilan := int64(math.Round(total / float64(tenor)))
 
-    otr := int64(math.Round(price))
-    admin := int64(math.Round(price * 0.05))
-    bunga := int64(math.Round(price * 0.02 * float64(tenor)))
-    total := float64(otr + admin + bunga)
-    cicilan := int64(math.Round(total / float64(tenor)))
+	tr := &entity.Transaction{
+		ContractNo:      fmt.Sprintf("C-%d-%d", consumerID, time.Now().UTC().UnixNano()),
+		ConsumerID:      consumerID,
+		ConsumerLimitID: clID,
+		AssetID:         assetID,
+		TenorMonth:      tenor,
+		OTR:             otr,
+		AdminFee:        admin,
+		JumlahBunga:     bunga,
+		JumlahCicilan:   cicilan,
+		Status:          "SUCCESS",
+		CreatedAt:       time.Now().UTC(),
+	}
 
-    tr := &entity.Transaction{
-        ContractNo: fmt.Sprintf("C-%d-%d", consumerID, time.Now().UTC().UnixNano()),
-        ConsumerID: consumerID,
-        ConsumerLimitID: clID,
-        AssetID: assetID,
-        TenorMonth: tenor,
-        OTR: otr,
-        AdminFee: admin,
-        JumlahBunga: bunga,
-        JumlahCicilan: cicilan,
-        Status: "SUCCESS",
-        CreatedAt: time.Now().UTC(),
-    }
+	id, err := u.txRepo.Create(ctx, tx, tr)
+	if err != nil {
+		return nil, err
+	}
+	tr.ID = id
 
-    if _, err := u.txRepo.Create(ctx, tx, tr); err != nil {
-        return nil, err
-    }
+	newUsed := usedLimit + float64(otr)
+	if _, err := tx.ExecContext(ctx, `UPDATE consumer_limits SET used_limit = ?, updated_at = ? WHERE id = ?`, newUsed, time.Now().UTC(), clID); err != nil {
+		return nil, err
+	}
 
-    newUsed := usedLimit + float64(otr)
-    if _, err := tx.ExecContext(ctx, `UPDATE consumer_limits SET used_limit = ?, updated_at = ? WHERE id = ?`, newUsed, time.Now().UTC(), clID); err != nil {
-        return nil, err
-    }
-
-    if err := tx.Commit(); err != nil {
-        return nil, err
-    }
-    return tr, nil
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return tr, nil
 }
 
 func (u *ConsumerTransactionUsecase) ListByConsumer(ctx context.Context, consumerID uint64) ([]*entity.Transaction, error) {
-    return u.txRepo.ListByConsumer(ctx, consumerID)
+	return u.txRepo.ListByConsumer(ctx, consumerID)
 }
